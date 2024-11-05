@@ -71,11 +71,11 @@ def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:
             inputVariable = input(prompt).strip()
             if not inputVariable:
                 raise ValueError("Tidak boleh kosong")
-            if '-' in inputVariable and int(inputVariable) < 0:
+            if inputVariable.startswith("-") and inputVariable[1:].isdigit():
                 raise ValueError("Hanya bisa bilangan positif")
-            if not fungsiValidasi(inputVariable):
+            if not fungsiValidasi(inputVariable) or '-' in inputVariable:
                 raise ValueError(pesanError)
-            
+
             return inputVariable # jika input valid, kembali
 
         except ValueError as error:
@@ -220,7 +220,6 @@ def admin_hapusIkan():
     while True:
         try:
             index = validasiInput("Pilih nomor ikan hias yang ingin dihapus : ", validasi_input_angka, "Hanya bisa angka")
-
             index = int(index)
 
             # Pastikan index berada dalam rentang yang valid
@@ -238,7 +237,6 @@ def admin_hapusIkan():
                 break
 
         except ValueError as error:
-            clear()
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
 
 def user_pesanIkanHias():
@@ -249,40 +247,43 @@ def user_pesanIkanHias():
         # mengubah data csv menjadi list
         dataIkanHias = list(csv.reader(file))
     
-    try:
-        pilihan = int(input("Pilih nomor ikan hias yang ingin dipesan: "))
-        # Pastikan pilihan berada dalam rentang yang valid
-        if 1 <= pilihan <= len(dataIkanHias):
-            ikanTerpilih = dataIkanHias[pilihan-1]
-            ikanTerpilih_copy = dataIkanHias[pilihan-1].copy()
-            # membuka file ./data/keranjang.csv, dan memindahkan ikan terpilih dari ./data/daftar_ikan.csv ke ./data/keranjang.csv dengan metode 'a'/append
-            with open('./data/keranjang.csv', 'a', newline='') as file:
-                writer = csv.writer(file)
-                global username_sedangLogin
+    while True:
+        try:
+            pilihan = validasiInput("Pilih nomor ikan hias yang ingin dipesan: ", validasi_input_angka, "Hanya bisa angka")
+            pilihan = int(pilihan)
+            # Pastikan pilihan berada dalam rentang yang valid
+            if 1 <= pilihan <= len(dataIkanHias):
+                ikanTerpilih = dataIkanHias[pilihan-1]
+                ikanTerpilih_copy = dataIkanHias[pilihan-1].copy()
+                # membuka file ./data/keranjang.csv, dan memindahkan ikan terpilih dari ./data/daftar_ikan.csv ke ./data/keranjang.csv dengan metode 'a'/append
+                with open('./data/keranjang.csv', 'a', newline='') as file:
+                    writer = csv.writer(file)
+                    global username_sedangLogin
 
-                ikanTerpilih_copy.insert(3, username_sedangLogin)
-                writer.writerow(ikanTerpilih_copy[:4])
-                
-            ikanTerpilih[3] = int(ikanTerpilih[3])
-            ikanTerpilih[3] -= 1
+                    ikanTerpilih_copy.insert(3, username_sedangLogin)
+                    writer.writerow(ikanTerpilih_copy[:4])
+                    
+                ikanTerpilih[3] = int(ikanTerpilih[3])
+                ikanTerpilih[3] -= 1
 
-            if ikanTerpilih[3] < 1:
-                # hapus ikan hias yang dipilih
-                del ikanTerpilih
-                
-            # Tulis ulang dataIkanHias yang sudah di-update ke ./data/daftar_ikan.csv
-            with open('./data/daftar_ikan.csv', 'w') as file:
-                csv.writer(file).writerows(dataIkanHias)
+                if ikanTerpilih[3] < 1:
+                    # hapus ikan hias yang dipilih
+                    del ikanTerpilih
+                    
+                # Tulis ulang dataIkanHias yang sudah di-update ke ./data/daftar_ikan.csv
+                with open('./data/daftar_ikan.csv', 'w') as file:
+                    csv.writer(file).writerows(dataIkanHias)
 
-            loading(10, 0.05)
-            print(f"\n{GREEN}{BOLD}'{dataIkanHias[pilihan-1][0]}' telah ditambahkan ke keranjang.{RESET}")
-            lanjut()            
+                loading(10, 0.05)
+                print(f"\n{GREEN}{BOLD}'{dataIkanHias[pilihan-1][0]}' telah ditambahkan ke keranjang.{RESET}")
+                lanjut()            
+                break
 
-        else:
-            print("Pilihan tidak valid.\n")
+            else:
+                print("Ikan hias yang dipilih tidak ada.\n")
 
-    except ValueError:
-        print("Input harus berupa angka.\n")
+        except ValueError as error:
+            print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
         
 def user_keranjangBelanjaan():
     try:
@@ -374,67 +375,70 @@ def user_keranjangBelanjaan():
     lanjut()                
 
 def user_checkout():
-    with open("./data/keranjang.csv", "r") as file:
-        reader = csv.reader(file)
-        global username_sedangLogin
-        
-        # Mengubah data CSV menjadi sebuah list
-        dataIkanHias = list(reader)
-                    
-        # Filter data berdasarkan username_sedangLogin
-        dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
-
-        dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
-        
-        # Mengambil semua nilai dari baris ke-3 (indeks 2) yaitu harga
-        kolom_harga = [int(baris[2]) for baris in dataIkanHias if baris[-1] == username_sedangLogin]
+    try:
+        with open("./data/keranjang.csv", "r") as file:
+            reader = csv.reader(file)
+            global username_sedangLogin
             
-        # Menghitung jumlah total dari kolom harga
-        jumlah = sum(kolom_harga)
-
-        print(f"Total Harga : {jumlah}")
-        
-        while True:    
-            # konfirmasi apakah ingin menghapus ikan dari keranjang belanja 
-            konfirPembayaran = input("Yakin ingin melakukan pembayaran? ").strip().lower()
-            
-            if konfirPembayaran == "y":
-                bayar = validasiInput("Input uang yang dimiliki : ", validasi_input_angka, "Hanya bisa angka")
-                bayar = int(bayar)
-
-                loading(10, 0.05)
-
-                if bayar >= jumlah:
-                    print(GREEN+BOLD+"\nBerhasil melakukan pembayaran"+RESET)
-
-                    with open("./data/checkout.csv", "a", newline='') as file:
-                        writer = csv.writer(file)
-                        for baris in dataIkanHias_login:
-                            writer.writerow(baris)
+            # Mengubah data CSV menjadi sebuah list
+            dataIkanHias = list(reader)
                         
-                    del dataIkanHias_login
+            # Filter data berdasarkan username_sedangLogin
+            dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
 
-                    with open("./data/keranjang.csv", "w", newline='') as file:
-                        writer = csv.writer(file)
-                        for baris in dataIkanHias_tidakLogin:
-                            writer.writerow(baris)
+            dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
+            
+            # Mengambil semua nilai dari baris ke-3 (indeks 2) yaitu harga
+            kolom_harga = [int(baris[2]) for baris in dataIkanHias if baris[-1] == username_sedangLogin]
+                
+            # Menghitung jumlah total dari kolom harga
+            jumlah = sum(kolom_harga)
 
-                    kembalian = bayar - jumlah
-                    if kembalian > 0:
-                        print(f"\n{GREEN}{BOLD}Uang kembalian : {kembalian}, Terimakasih sudah berbelanja😊{RESET}")
+            print(f"Total Harga : Rp{jumlah}")
+            
+            while True:    
+                # konfirmasi apakah ingin menghapus ikan dari keranjang belanja 
+                konfirPembayaran = input("Yakin ingin melakukan pembayaran? ").strip().lower()
+                
+                if konfirPembayaran == "y":
+                    bayar = validasiInput("Input uang yang dimiliki : ", validasi_input_angka, "Hanya bisa angka")
+                    bayar = int(bayar)
+
+                    loading(10, 0.05)
+
+                    if bayar >= jumlah:
+                        print(GREEN+BOLD+"\nBerhasil melakukan pembayaran"+RESET)
+
+                        with open("./data/checkout.csv", "a", newline='') as file:
+                            writer = csv.writer(file)
+                            for baris in dataIkanHias_login:
+                                writer.writerow(baris)
+                            
+                        del dataIkanHias_login
+
+                        with open("./data/keranjang.csv", "w", newline='') as file:
+                            writer = csv.writer(file)
+                            for baris in dataIkanHias_tidakLogin:
+                                writer.writerow(baris)
+
+                        kembalian = bayar - jumlah
+                        if kembalian > 0:
+                            print(f"\n{GREEN}{BOLD}Uang kembalian : Rp{kembalian}, Terimakasih sudah berbelanja😊{RESET}")
+                        else:
+                            print(GREEN+BOLD+"\nTerimakasih sudah berbelanja😊"+RESET)
+                        lanjut()
                     else:
-                        print(GREEN+BOLD+"Terimakasih sudah berbelanja😊"+RESET)
-                    lanjut()
-                else:
-                    print(GREEN+BOLD+"Maaf uang anda tidak cukup😔"+RESET)
-                    lanjut()
+                        print(RED+BOLD+"\nMaaf uang anda tidak cukup😔"+RESET)
+                        lanjut()
 
-                break
-            elif konfirPembayaran == "t":
-                break
-            else:
-                print("Input tidak valid.")
-        
+                    break
+                elif konfirPembayaran == "t":
+                    break
+                else:
+                    print("Input tidak valid.")
+
+    except FileNotFoundError:
+        print("File tidak ditemukan, buat data baru terlebih dahulu.")
 
 def menuAdmin():
     wait(0)
@@ -515,6 +519,7 @@ def menuUser():
                 clear()
                 user_keranjangBelanjaan()
             elif menu_entry_index == 3:
+                clear()
                 user_checkout()
                 clear()
             elif menu_entry_index == 4:
