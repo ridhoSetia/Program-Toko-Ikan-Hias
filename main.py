@@ -5,7 +5,7 @@ import time
 from tqdm import tqdm
 from tabulate import tabulate
 from typing import Callable
-from simple_term_menu import TerminalMenu
+import inquirer
 
 # Warna
 BOLD = '\033[1m'
@@ -17,6 +17,7 @@ BLUE = '\033[34m'
 MAGENTA = '\033[35m'
 CYAN = '\033[36m'
 LIGHT_GRAY = '\033[37m'
+LIGHT_GREEN = '\33[32;1m'
 DARK_GRAY = '\033[90m'
 BRIGHT_RED = '\033[91m'
 BRIGHT_GREEN = '\033[92m'
@@ -61,32 +62,71 @@ def wait(index:int):
 
 # menahan dan melanjutkan program
 def lanjut():
-    print("Tekan enter untuk lanjut...")
+    print(BOLD+"Tekan enter untuk lanjut..."+RESET)
     input()
     clear()
 
-def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:str):
+def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:str, cekJenisValidasi:str, *valueNoUpdate):
     while True:
         try:
             inputVariable = input(prompt).strip()
-            if not inputVariable:
-                raise ValueError("Tidak boleh kosong")
-            if inputVariable.startswith("-") and inputVariable[1:].isdigit():
-                raise ValueError("Hanya bisa bilangan positif")
-            if not fungsiValidasi(inputVariable) or '-' in inputVariable:
-                raise ValueError(pesanError)
+            if inputVariable == 'x':
+                if 'admin' in cekJenisValidasi:
+                    menuAdmin()
+                else:
+                    menuUser()
+            else:
+                if 'update' in cekJenisValidasi :
+                    if not inputVariable:
+                        inputVariable = str(*valueNoUpdate)
+                else:
+                    if not inputVariable:
+                        raise ValueError("Tidak boleh kosong")
+                    
+                if 'angka' in pesanError: 
+                    if inputVariable.startswith("-") and inputVariable[1:].isdigit():
+                        raise ValueError("Hanya bisa bilangan positif")
+                if not fungsiValidasi(inputVariable) or '-' in inputVariable:
+                    raise ValueError(pesanError)
 
-            return inputVariable # jika input valid, kembali
+                return inputVariable # jika input valid, kembali 
 
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
 
+def opsiMenu(*banyakOpsi):
+    global answers
+    totalOpsi = []
+    for opsi in banyakOpsi:
+        totalOpsi.append(opsi)
+    option = [
+        inquirer.List(
+            "opsi",
+            message=YELLOW+"Pilih"+RESET,
+            choices=[
+                *totalOpsi
+            ],
+        ),
+    ]
+
+    # mendapatkan jawaban
+    answers = inquirer.prompt(option)
+
 # menambah data ikan hias baru
 def admin_tambahIkan():
-    jenisIkan = validasiInput("Tambah jenis ikan hias baru : ", validasi_input_huruf, "Hanya bisa huruf")
-    kelangkaan = validasiInput("Tambah kelangkaan ikan hias baru : ", validasi_input_huruf, "Hanya bisa huruf")
-    hargaIkan = validasiInput("Tambah harga ikan hias baru : ", validasi_input_angka, "Hanya bisa angka")
-    stok = validasiInput("Tambah stok ikan hias baru : ", validasi_input_angka, "Hanya bisa angka")
+    print('''
+░▀█▀░█▀█░█▄█░█▀▄░█▀█░█░█░░░▀█▀░█░█░█▀█░█▀█░░░█░█░▀█▀░█▀█░█▀▀
+░░█░░█▀█░█░█░█▀▄░█▀█░█▀█░░░░█░░█▀▄░█▀█░█░█░░░█▀█░░█░░█▀█░▀▀█
+░░▀░░▀░▀░▀░▀░▀▀░░▀░▀░▀░▀░░░▀▀▀░▀░▀░▀░▀░▀░▀░░░▀░▀░▀▀▀░▀░▀░▀▀▀
+''')
+
+    print(f'Input {RED}{BOLD}"x"{RESET} jika ingin kembali\n')
+    jenisIkan = validasiInput("Tambah jenis ikan hias baru : ", validasi_input_huruf, "Hanya bisa huruf", 'admin create')
+    print("Tambah kelangkaan ikan hias baru : ")
+    opsiMenu('Umum', 'Agak Langka', 'Langka', 'Sangat Langka')
+    kelangkaan = answers['opsi']
+    hargaIkan = validasiInput("Tambah harga ikan hias baru : ", validasi_input_angka, "Hanya bisa angka", 'admin create')
+    stok = validasiInput("Tambah stok ikan hias baru : ", validasi_input_angka, "Hanya bisa angka", 'admin create')
 
     # membuka file ./data/daftar_ikan.csv, dan menambah data baru dengan metode 'a'/append
     with open('./data/daftar_ikan.csv', 'a', newline='') as file:
@@ -152,7 +192,7 @@ def admin_updateIkan():
                 # mengubah data csv menjadi list
                 dataIkanHias = list(csv.reader(file))
 
-            index = validasiInput("Pilih nomor ikan hias yang ingin diupdate : ", validasi_input_angka, "Hanya bisa angka")
+            index = validasiInput(YELLOW+BOLD+"Pilih nomor ikan hias yang ingin diupdate : "+RESET, validasi_input_angka, "Hanya bisa angka", 'admin index')
             
             # jika berhasil melewati error, ubah value index menjadi integer
             index = int(index)
@@ -162,29 +202,12 @@ def admin_updateIkan():
                 # unpacking
                 jenisIkan, kelangkaan, hargaIkan, stok = dataIkanHias[index-1]
 
-                jenisIkan_baru = input(f"Jenis ikan hias baru {BOLD}(enter jika tidak ingin mengubah){RESET} : ").strip()
-                if not jenisIkan_baru:
-                    jenisIkan_baru = jenisIkan
-                if not validasi_input_huruf(jenisIkan_baru):
-                    raise ValueError("Hanya bisa huruf")
-
-                kelangkaan_baru = input(f"Kelangkaan ikan hias baru {BOLD}(enter jika tidak ingin mengubah){RESET} : ").strip()
-                if not kelangkaan_baru:
-                    kelangkaan_baru = kelangkaan
-                if not validasi_input_huruf(kelangkaan_baru):
-                    raise ValueError("Hanya bisa huruf")
-
-                hargaIkan_baru = input(f"Harga ikan hias baru {BOLD}(enter jika tidak ingin mengubah){RESET} : ").strip()
-                if not hargaIkan_baru:
-                    hargaIkan_baru = hargaIkan
-                if not validasi_input_angka(hargaIkan_baru):
-                    raise ValueError("Hanya bisa angka")
-
-                stok_baru = input(f"Stok ikan hias baru {BOLD}(enter jika tidak ingin mengubah){RESET} : ").strip()
-                if not stok_baru:
-                    stok_baru = stok
-                if not validasi_input_angka(stok_baru):
-                    raise ValueError("Hanya bisa angka")
+                jenisIkan_baru = validasiInput(f"Ubah jenis ikan hias {BOLD}(enter jika tidak ingin mengubah){RESET} : ", validasi_input_huruf, "Hanya bisa huruf", 'admin update', jenisIkan)
+                print("Ubah kelangkaan ikan hias : ")
+                opsiMenu('Umum', 'Agak Langka', 'Langka', 'Sangat Langka')
+                kelangkaan_baru = answers['opsi']
+                hargaIkan_baru = validasiInput(f"Ubah harga ikan hias {BOLD}(enter jika tidak ingin mengubah){RESET} : ", validasi_input_angka, "Hanya bisa angka", 'admin update', hargaIkan)
+                stok_baru = validasiInput(f"Ubah stok ikan hias {BOLD}(enter jika tidak ingin mengubah){RESET} : ", validasi_input_angka, "Hanya bisa angka", 'admin update', stok)
 
                 # mengambil data yang dipilih
                 dataIkanHias[index-1] = jenisIkan_baru, kelangkaan_baru, hargaIkan_baru, stok_baru
@@ -219,7 +242,7 @@ def admin_hapusIkan():
 
     while True:
         try:
-            index = validasiInput("Pilih nomor ikan hias yang ingin dihapus : ", validasi_input_angka, "Hanya bisa angka")
+            index = validasiInput(YELLOW+BOLD+"Pilih nomor ikan hias yang ingin dihapus : "+RESET, validasi_input_angka, "Hanya bisa angka", 'admin index')
             index = int(index)
 
             # Pastikan index berada dalam rentang yang valid
@@ -249,7 +272,7 @@ def user_pesanIkanHias():
     
     while True:
         try:
-            pilihan = validasiInput("Pilih nomor ikan hias yang ingin dipesan: ", validasi_input_angka, "Hanya bisa angka")
+            pilihan = validasiInput(YELLOW+BOLD+"Pilih nomor ikan hias yang ingin dipesan: "+RESET, validasi_input_angka, "Hanya bisa angka", 'user index')
             pilihan = int(pilihan)
             # Pastikan pilihan berada dalam rentang yang valid
             if 1 <= pilihan <= len(dataIkanHias):
@@ -290,83 +313,86 @@ def user_keranjangBelanjaan():
         # Membaca file CSV dan memproses data
         with open("./data/keranjang.csv", "r") as file:
             readerKeranjang = csv.reader(file)
-            global username_sedangLogin
             
             # Mengubah data CSV menjadi sebuah list
             dataIkanHias = list(readerKeranjang)
-                        
-            # Filter data berdasarkan username_sedangLogin
-            dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
 
-            dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
-
-            # Mengurutkan ikan berdasarkan jenis untuk menampilkan tabel
-            dataIkanHias_login = sorted(dataIkanHias_login, key=lambda x: x[0])
-
-            # Tampilkan tabel dengan indeks asli
-            table = []
-            ikan_terdeteksi = {}
-            for i, baris in enumerate(dataIkanHias_login):
-                nama_ikan = baris[0]
-                if nama_ikan in ikan_terdeteksi:
-                    ikan_terdeteksi[nama_ikan]['jumlah'] += 1
-                else:
-                    ikan_terdeteksi[nama_ikan] = {'data': baris, 'jumlah': 1}
-
-            print(ikan_terdeteksi)
-
-            for i, (nama_ikan, infoIkan) in enumerate(ikan_terdeteksi.items()):
-                print(nama_ikan)
-                print(infoIkan)
-                print(*infoIkan['data'])
-                print(infoIkan['jumlah'])
-                row = [i + 1, *infoIkan['data'], infoIkan['jumlah']]
-                table.append(row)
-                del row[-2]
-
-            # Menampilkan hasil akhir dalam bentuk tabel
-            headers = ["No", "Jenis Ikan", "Kelangkaan", "Harga", "Jumlah"]
-            print(tabulate(table, headers, tablefmt="grid"))
+            if len(dataIkanHias) == 0:
+                print('Keranjang belanja kosong, silahkan pesan terlebih dahulu😊')
             
-            while True:    
-                # konfirmasi apakah ingin menghapus ikan dari keranjang belanja 
-                konfirInginHapus = input("Ingin menghapus ikan hias dari keranjang? (y/t) : ").strip().lower()
+            else:
+                # Filter data berdasarkan username_sedangLogin
+                dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
+
+                dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
+
+                # Mengurutkan ikan berdasarkan jenis untuk menampilkan tabel
+                dataIkanHias_login = sorted(dataIkanHias_login, key=lambda x: x[0])
+
+                # Tampilkan tabel dengan indeks asli
+                table = []
+                ikan_terdeteksi = {}
+                for i, baris in enumerate(dataIkanHias_login):
+                    nama_ikan = baris[0]
+                    if nama_ikan in ikan_terdeteksi:
+                        ikan_terdeteksi[nama_ikan]['jumlah'] += 1
+                    else:
+                        ikan_terdeteksi[nama_ikan] = {'data': baris, 'jumlah': 1}
+
+                print(ikan_terdeteksi)
+
+                for i, (nama_ikan, infoIkan) in enumerate(ikan_terdeteksi.items()):
+                    print(nama_ikan)
+                    print(infoIkan)
+                    print(*infoIkan['data'])
+                    print(infoIkan['jumlah'])
+                    row = [i + 1, *infoIkan['data'], infoIkan['jumlah']]
+                    table.append(row)
+                    del row[-2]
+
+                # Menampilkan hasil akhir dalam bentuk tabel
+                headers = ["No", "Jenis Ikan", "Kelangkaan", "Harga", "Jumlah"]
+                print(tabulate(table, headers, tablefmt="grid"))
                 
-                if konfirInginHapus in ["y", "t"]:
-                    break
-                else:
-                    print("Input tidak valid.")
-            
-            while True:
-                # Hapus ikan dari keranjang
-                if konfirInginHapus == "y":
-                    hapusDariKeranjang = validasiInput("No ikan hias yang ingin dihapus : ", validasi_input_angka, "Hanya bisa angka")
-
-                    hapusDariKeranjang = int(hapusDariKeranjang)
-                    if 1 <= hapusDariKeranjang <= len(table):
-                        # Menyimpan nama ikan yang akan dihapus untuk pesan konfirmasi
-                        nama_ikan = table[hapusDariKeranjang - 1][1]
-                        
-                        # Menghapus satu item dari dataIkanHias_login
-                        for i in range(len(dataIkanHias_login)):
-                            if dataIkanHias_login[i][0] == nama_ikan and dataIkanHias_login[i][-1] == username_sedangLogin:
-                                del dataIkanHias_login[i]
-                                print(f"Berhasil menghapus '{nama_ikan}'")
-                                break
-
-                        # Tulis ulang dataIkanHias yang sudah di-update ke ./data/keranjang.csv
-                        with open("./data/keranjang.csv", "w", newline='') as file:
-                            writer = csv.writer(file)
-                            writer.writerows(dataIkanHias_login)
-                            writer.writerows(dataIkanHias_tidakLogin)
-
-                        print(GREEN+BOLD+"\nBerhasil menghapus ikan hias dari keranjang"+RESET)
-                        lanjut()
+                while True:    
+                    # konfirmasi apakah ingin menghapus ikan dari keranjang belanja 
+                    konfirInginHapus = input(YELLOW+BOLD+"Ingin menghapus ikan hias dari keranjang? (y/t) : "+RESET).strip().lower()
+                    
+                    if konfirInginHapus in ["y", "t"]:
                         break
                     else:
-                        print("Ikan hias tidak ditemukan!")
-                else:
-                    break
+                        print("Input tidak valid.")
+                
+                while True:
+                    # Hapus ikan dari keranjang
+                    if konfirInginHapus == "y":
+                        hapusDariKeranjang = validasiInput("No ikan hias yang ingin dihapus : ", validasi_input_angka, "Hanya bisa angka", 'user index')
+
+                        hapusDariKeranjang = int(hapusDariKeranjang)
+                        if 1 <= hapusDariKeranjang <= len(table):
+                            # Menyimpan nama ikan yang akan dihapus untuk pesan konfirmasi
+                            nama_ikan = table[hapusDariKeranjang - 1][1]
+                            
+                            # Menghapus satu item dari dataIkanHias_login
+                            for i in range(len(dataIkanHias_login)):
+                                if dataIkanHias_login[i][0] == nama_ikan and dataIkanHias_login[i][-1] == username_sedangLogin:
+                                    del dataIkanHias_login[i]
+                                    print(f"Berhasil menghapus '{nama_ikan}'")
+                                    break
+
+                            # Tulis ulang dataIkanHias yang sudah di-update ke ./data/keranjang.csv
+                            with open("./data/keranjang.csv", "w", newline='') as file:
+                                writer = csv.writer(file)
+                                writer.writerows(dataIkanHias_login)
+                                writer.writerows(dataIkanHias_tidakLogin)
+
+                            print(GREEN+BOLD+"\nBerhasil menghapus ikan hias dari keranjang"+RESET)
+                            lanjut()
+                            break
+                        else:
+                            print("Ikan hias tidak ditemukan!")
+                    else:
+                        break
 
     # bila file tidak ditemukan maka muncul pesan error dengan menangkap error FileNotFoundError
     except FileNotFoundError:
@@ -375,11 +401,15 @@ def user_keranjangBelanjaan():
     lanjut()                
 
 def user_checkout():
+    print('''
+░█▀█░█▀▀░█▄█░█▀▄░█▀█░█░█░█▀█░█▀▄░█▀█░█▀█
+░█▀▀░█▀▀░█░█░█▀▄░█▀█░░█░░█▀█░█▀▄░█▀█░█░█
+░▀░░░▀▀▀░▀░▀░▀▀░░▀░▀░░▀░░▀░▀░▀░▀░▀░▀░▀░▀
+''')
     try:
         with open("./data/keranjang.csv", "r") as file:
             reader = csv.reader(file)
-            global username_sedangLogin
-            
+
             # Mengubah data CSV menjadi sebuah list
             dataIkanHias = list(reader)
                         
@@ -396,54 +426,53 @@ def user_checkout():
 
             print(f"Total Harga : Rp{jumlah}")
             
-            while True:    
-                # konfirmasi apakah ingin menghapus ikan dari keranjang belanja 
-                konfirPembayaran = input("Yakin ingin melakukan pembayaran? ").strip().lower()
-                
-                if konfirPembayaran == "y":
-                    bayar = validasiInput("Input uang yang dimiliki : ", validasi_input_angka, "Hanya bisa angka")
-                    bayar = int(bayar)
+            if jumlah > 0:
+                while True:    
+                    konfirPembayaran = input(YELLOW+BOLD+"Yakin ingin melakukan pembayaran (y/t) ? "+RESET).strip().lower()
+                    
+                    if konfirPembayaran == "y":
+                        bayar = validasiInput("Input uang yang dimiliki : ", validasi_input_angka, "Hanya bisa angka", 'nominal')
+                        bayar = int(bayar)
 
-                    loading(10, 0.05)
+                        loading(10, 0.05)
 
-                    if bayar >= jumlah:
-                        print(GREEN+BOLD+"\nBerhasil melakukan pembayaran"+RESET)
+                        if bayar >= jumlah:
+                            print(GREEN+BOLD+"\nBerhasil melakukan pembayaran"+RESET)
 
-                        with open("./data/checkout.csv", "a", newline='') as file:
-                            writer = csv.writer(file)
-                            for baris in dataIkanHias_login:
-                                writer.writerow(baris)
-                            
-                        del dataIkanHias_login
+                            with open("./data/checkout.csv", "a", newline='') as file:
+                                writer = csv.writer(file)
+                                for baris in dataIkanHias_login:
+                                    writer.writerow(baris)
+                                
+                            del dataIkanHias_login
 
-                        with open("./data/keranjang.csv", "w", newline='') as file:
-                            writer = csv.writer(file)
-                            for baris in dataIkanHias_tidakLogin:
-                                writer.writerow(baris)
+                            with open("./data/keranjang.csv", "w", newline='') as file:
+                                writer = csv.writer(file)
+                                for baris in dataIkanHias_tidakLogin:
+                                    writer.writerow(baris)
 
-                        kembalian = bayar - jumlah
-                        if kembalian > 0:
-                            print(f"\n{GREEN}{BOLD}Uang kembalian : Rp{kembalian}, Terimakasih sudah berbelanja😊{RESET}")
+                            kembalian = bayar - jumlah
+                            if kembalian > 0:
+                                print(f"\n{GREEN}{BOLD}Uang kembalian : Rp{kembalian}, Terimakasih sudah berbelanja😊{RESET}")
+                            else:
+                                print(GREEN+BOLD+"\nTerimakasih sudah berbelanja😊"+RESET)
                         else:
-                            print(GREEN+BOLD+"\nTerimakasih sudah berbelanja😊"+RESET)
-                        lanjut()
-                    else:
-                        print(RED+BOLD+"\nMaaf uang anda tidak cukup😔"+RESET)
-                        lanjut()
+                            print(RED+BOLD+"\nMaaf uang anda tidak cukup😔"+RESET)
 
-                    break
-                elif konfirPembayaran == "t":
-                    break
-                else:
-                    print("Input tidak valid.")
+                        break
+                    elif konfirPembayaran == "t":
+                        break
+                    else:
+                        print("Input tidak valid.")
+            else:
+                print('Tidak ada pesanan, silahkan pesan terlebih dahulu😊')
 
     except FileNotFoundError:
         print("File tidak ditemukan, buat data baru terlebih dahulu.")
 
+    lanjut()
+    
 def menuAdmin():
-    wait(0)
-    print(RED+BOLD+"\nLogin sebagai admin 👑"+RESET)
-    time.sleep(1.5)
     clear()
     while True:
         print(BOLD+BLUE+'''
@@ -451,45 +480,36 @@ def menuAdmin():
 ░█░█░█▀▀░█░█░█░█░░░█▀█░█░█░█░█░░█░░█░█
 ░▀░▀░▀▀▀░▀░▀░▀▀▀░░░▀░▀░▀▀░░▀░▀░▀▀▀░▀░▀
 '''+RESET)
-        pilihan = ["[1] Tambah Ikan Hias", "[2] Tampilkan Ikan Hias", "[3] Ubah Ikan Hias", "[4] Hapus Ikan HIas", "[5] Logout"]
-        terminal_menu = TerminalMenu(
-            pilihan,
-            menu_cursor=" ► ",                         # Kursor untuk opsi yang dipilih
-            menu_cursor_style=('fg_green', 'bold'),    # Warna kursor teks menjadi biru dan tebal
-            menu_highlight_style=('bg_green', 'bold'), # atar belakang hijau, teks tebal
-            cycle_cursor=True,                         # Membuat kursor melingkar (opsi atas ke bawah)
-        )
-        menu_entry_index = terminal_menu.show()
+        opsiMenu("[1] Tambah Ikan Hias", "[2] Tampilkan Ikan Hias", "[3] Ubah Ikan Hias", "[4] Hapus Ikan HIas", "[0] Logout")
 
         try:
-            if menu_entry_index == 0:
-                clear()
-                admin_tambahIkan()
-            elif menu_entry_index == 1:
-                clear()
-                tampilkanIkan()
-                lanjut()
-            elif menu_entry_index == 2:
-                clear()
-                admin_updateIkan()
-            elif menu_entry_index == 3:
-                clear()
-                admin_hapusIkan()
-            elif menu_entry_index == 4:
-                clear()
-                print("Logout")
-                time.sleep(1)
-                menuUtama()
-            else:
-                raise KeyboardInterrupt("anda menekan key yang salah")
+            # Menjalankan fungsi berdasarkan pilihan
+            if answers:
+                pilihan = answers["opsi"]
+
+                if '[1]' in pilihan:
+                    clear()
+                    admin_tambahIkan()
+                elif '[2]' in pilihan:
+                    clear()
+                    tampilkanIkan()
+                    lanjut()
+                elif '[3]' in pilihan:
+                    clear()
+                    admin_updateIkan()
+                elif '[4]' in pilihan:
+                    clear()
+                    admin_hapusIkan()
+                elif '[0]' in pilihan:
+                    clear()
+                    print("Logout")
+                    time.sleep(1)
+                    menuUtama()
         except KeyboardInterrupt as error:
-            print(f"{RED}{BOLD}Program error, {error}{RESET}")
-            break
+            print(f"{RED}{BOLD}Program error, anda menekan key yang salah{error}{RESET}")
+            exit(0)
 
 def menuUser():
-    wait(0)
-    print(RED+BOLD+"\nLogin sebagai user 👤"+RESET)
-    time.sleep(1.5)
     clear()
     while True:
         print(BLUE+BOLD+'''
@@ -497,41 +517,35 @@ def menuUser():
 ░█░█░█▀▀░█░█░█░█░░░░█░░█▀▄░█▀█░█░█░░░█▀█░░█░░█▀█░▀▀█
 ░▀░▀░▀▀▀░▀░▀░▀▀▀░░░▀▀▀░▀░▀░▀░▀░▀░▀░░░▀░▀░▀▀▀░▀░▀░▀▀▀
 '''+RESET)
-        pilihan = ["[1] Daftar ikan hias", "[2] Pesan ikan hias", "[3] Keranjang belanja", "[4] Checkout", "[5] Logout"]
-        terminal_menu = TerminalMenu(
-            pilihan,
-            menu_cursor=" ► ",                         # Kursor untuk opsi yang dipilih
-            menu_cursor_style=('fg_green', 'bold'),    # Warna kursor teks menjadi biru dan tebal
-            menu_highlight_style=('bg_green', 'bold'), # atar belakang hijau, teks tebal
-            cycle_cursor=True,                         # Membuat kursor melingkar (opsi atas ke bawah)
-        )
-        menu_entry_index = terminal_menu.show()
+        opsiMenu("[1] Daftar ikan hias", "[2] Pesan ikan hias", "[3] Keranjang belanja", "[4] Checkout", "[0] Logout")
         
         try:
-            if menu_entry_index == 0:
-                clear()
-                tampilkanIkan()
-                lanjut()
-            elif menu_entry_index == 1:
-                clear()
-                user_pesanIkanHias()
-            elif menu_entry_index == 2:
-                clear()
-                user_keranjangBelanjaan()
-            elif menu_entry_index == 3:
-                clear()
-                user_checkout()
-                clear()
-            elif menu_entry_index == 4:
-                clear()
-                print("Logout")
-                time.sleep(1)
-                menuUtama()
-            else:
-                raise KeyboardInterrupt("anda menekan key yang salah")
+            # Menjalankan fungsi berdasarkan pilihan
+            if answers:
+                pilihan = answers["opsi"]
+
+                if '[1]' in pilihan:
+                    clear()
+                    tampilkanIkan()
+                    lanjut()
+                elif '[2]' in pilihan:
+                    clear()
+                    user_pesanIkanHias()
+                elif '[3]' in pilihan:
+                    clear()
+                    user_keranjangBelanjaan()
+                elif '[4]' in pilihan:
+                    clear()
+                    user_checkout()
+                    clear()
+                elif '[0]' in pilihan:
+                    clear()
+                    print("Logout")
+                    time.sleep(1)
+                    menuUtama()
         except KeyboardInterrupt as error:
-            print(f"{RED}{BOLD}Program error, {error}{RESET}")
-            break
+            print(f"{RED}{BOLD}Program error, anda menekan key yang salah{error}{RESET}")
+            exit(0)
 def login():
     global username_sedangLogin  # Menandai bahwa kita menggunakan variabel global
     clear()
@@ -563,8 +577,14 @@ def login():
                         login_sukses = True
                         username_sedangLogin = username
                         if int(role) == 1:
+                            wait(0)
+                            print(RED+BOLD+"\nLogin sebagai admin 👑"+RESET)
+                            time.sleep(1.5)
                             menuAdmin()
                         elif int(role) == 0:
+                            wait(0)
+                            print(RED+BOLD+"\nLogin sebagai user 👤"+RESET)
+                            time.sleep(1.5)
                             menuUser()
                         break  # Keluar dari loop ketika akun ditemukan dan login berhasil
                 if login_sukses:
@@ -635,29 +655,22 @@ def menuUtama():
 ░░▀░░▀▀▀░▀░▀░▀▀▀░░░▀▀▀░▀░▀░▀░▀░▀░▀░░░▀░▀░▀▀▀░▀░▀░▀▀▀
 '''+RESET)
     try:
-        pilihan = ["Login", "Registrasi", "Keluar"]
-        terminal_menu = TerminalMenu(
-            pilihan,
-            menu_cursor=" ► ",                         # Kursor untuk opsi yang dipilih
-            menu_cursor_style=('fg_green', 'bold'),    # Warna kursor teks menjadi biru dan tebal
-            menu_highlight_style=('bg_green', 'bold'), # atar belakang hijau, teks tebal
-            cycle_cursor=True,                         # Membuat kursor melingkar (opsi atas ke bawah)
-        )
+        opsiMenu('[1] Login', '[2] Register', '[0] Keluar')
 
-        menu_entry_index = terminal_menu.show()
+        # Menjalankan fungsi berdasarkan pilihan
+        if answers:
+            pilihan = answers["opsi"]
 
-        if menu_entry_index == 0:
-            login()
-        elif menu_entry_index == 1:
-            registrasi()
-            menuUtama()
-        elif menu_entry_index == 2:
-            print(RED+BOLD+"Program berhenti!"+RESET)
-            exit(0)
-        else:
-            raise KeyboardInterrupt("anda menekan key yang salah")
+            if "[1]" in pilihan:
+                login()
+            elif "[2]" in pilihan:
+                registrasi()
+                menuUtama()
+            elif "[0]" in pilihan:
+                print(RED+BOLD+"Program berhenti!"+RESET)
+                exit(0)
     except KeyboardInterrupt as error:
-        print(f"{RED}{BOLD}Program error, {error}{RESET}")
+        print(f"{RED}{BOLD}Program error, anda menekan key yang salah{error}{RESET}")
         exit(0)
 
 menuUtama()
