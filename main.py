@@ -269,7 +269,7 @@ def user_pesanIkanHias():
     with open("./data/daftar_ikan.csv", "r") as file:
         # mengubah data csv menjadi list
         dataIkanHias = list(csv.reader(file))
-    
+
     while True:
         try:
             pilihan = validasiInput(YELLOW+BOLD+"Pilih nomor ikan hias yang ingin dipesan: "+RESET, validasi_input_angka, "Hanya bisa angka", 'user index')
@@ -278,6 +278,7 @@ def user_pesanIkanHias():
             if 1 <= pilihan <= len(dataIkanHias):
                 ikanTerpilih = dataIkanHias[pilihan-1]
                 ikanTerpilih_copy = dataIkanHias[pilihan-1].copy()
+                
                 # membuka file ./data/keranjang.csv, dan memindahkan ikan terpilih dari ./data/daftar_ikan.csv ke ./data/keranjang.csv dengan metode 'a'/append
                 with open('./data/keranjang.csv', 'a', newline='') as file:
                     writer = csv.writer(file)
@@ -286,19 +287,20 @@ def user_pesanIkanHias():
                     ikanTerpilih_copy.insert(3, username_sedangLogin)
                     writer.writerow(ikanTerpilih_copy[:4])
                     
-                ikanTerpilih[3] = int(ikanTerpilih[3])
-                ikanTerpilih[3] -= 1
-
-                if ikanTerpilih[3] < 1:
-                    # hapus ikan hias yang dipilih
-                    del ikanTerpilih
-                    
-                # Tulis ulang dataIkanHias yang sudah di-update ke ./data/daftar_ikan.csv
-                with open('./data/daftar_ikan.csv', 'w') as file:
-                    csv.writer(file).writerows(dataIkanHias)
+                    ikanTerpilih[3] = int(ikanTerpilih[3])
+                    ikanTerpilih[3] -= 1
 
                 loading(10, 0.05)
                 print(f"\n{GREEN}{BOLD}'{dataIkanHias[pilihan-1][0]}' telah ditambahkan ke keranjang.{RESET}")
+                
+                if ikanTerpilih[3] < 1:
+                    # hapus ikan hias yang dipilih
+                    del dataIkanHias[pilihan - 1]
+
+                # Tulis ulang dataIkanHias yang sudah di-update ke ./data/daftar_ikan.csv
+                with open('./data/daftar_ikan.csv', 'w', newline='') as file:
+                    csv.writer(file).writerows(dataIkanHias)
+                
                 lanjut()            
                 break
 
@@ -332,17 +334,17 @@ def user_keranjangBelanjaan():
                 # Tampilkan tabel dengan indeks asli
                 table = []
                 ikan_terdeteksi = {}
-                for i, baris in enumerate(dataIkanHias_login):
-                    nama_ikan = baris[0]
-                    if nama_ikan in ikan_terdeteksi:
-                        ikan_terdeteksi[nama_ikan]['jumlah'] += 1
+                for i, dataBaris in enumerate(dataIkanHias_login):
+                    jenis_ikan = dataBaris[0]
+                    if jenis_ikan in ikan_terdeteksi:
+                        ikan_terdeteksi[jenis_ikan]['jumlah'] += 1
                     else:
-                        ikan_terdeteksi[nama_ikan] = {'data': baris, 'jumlah': 1}
+                        ikan_terdeteksi[jenis_ikan] = {'data': dataBaris, 'jumlah': 1}
 
                 print(ikan_terdeteksi)
 
-                for i, (nama_ikan, infoIkan) in enumerate(ikan_terdeteksi.items()):
-                    print(nama_ikan)
+                for i, (jenis_ikan, infoIkan) in enumerate(ikan_terdeteksi.items()):
+                    print(jenis_ikan)
                     print(infoIkan)
                     print(*infoIkan['data'])
                     print(infoIkan['jumlah'])
@@ -367,17 +369,16 @@ def user_keranjangBelanjaan():
                     # Hapus ikan dari keranjang
                     if konfirInginHapus == "y":
                         hapusDariKeranjang = validasiInput("No ikan hias yang ingin dihapus : ", validasi_input_angka, "Hanya bisa angka", 'user index')
-
                         hapusDariKeranjang = int(hapusDariKeranjang)
+                        
                         if 1 <= hapusDariKeranjang <= len(table):
-                            # Menyimpan nama ikan yang akan dihapus untuk pesan konfirmasi
-                            nama_ikan = table[hapusDariKeranjang - 1][1]
+                            # Menyimpan jenis ikan yang akan dihapus untuk pesan konfirmasi
+                            jenis_ikan = table[hapusDariKeranjang - 1][1]
                             
                             # Menghapus satu item dari dataIkanHias_login
                             for i in range(len(dataIkanHias_login)):
-                                if dataIkanHias_login[i][0] == nama_ikan and dataIkanHias_login[i][-1] == username_sedangLogin:
+                                if dataIkanHias_login[i][0] == jenis_ikan and dataIkanHias_login[i][-1] == username_sedangLogin:
                                     del dataIkanHias_login[i]
-                                    print(f"Berhasil menghapus '{nama_ikan}'")
                                     break
 
                             # Tulis ulang dataIkanHias yang sudah di-update ke ./data/keranjang.csv
@@ -397,8 +398,7 @@ def user_keranjangBelanjaan():
     # bila file tidak ditemukan maka muncul pesan error dengan menangkap error FileNotFoundError
     except FileNotFoundError:
         print("File tidak ditemukan, buat data baru terlebih dahulu.")
-
-    lanjut()                
+        lanjut()                
 
 def user_checkout():
     print('''
