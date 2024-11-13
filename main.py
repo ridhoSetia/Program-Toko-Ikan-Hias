@@ -128,7 +128,7 @@ def admin_tambahIkan():
     hargaIkan = validasiInput("Tambah harga ikan hias baru : ", validasi_input_angka, "Hanya bisa angka", 'admin create')
     stok = validasiInput("Tambah stok ikan hias baru : ", validasi_input_angka, "Hanya bisa angka", 'admin create')
 
-    # membuka file ./data/daftar_ikan.csv, dan menambah data baru dengan metode 'a'/append
+    # membuka file daftar_ikan.csv, dan menambah data baru dengan metode 'a'/append
     with open('./data/daftar_ikan.csv', 'a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([jenisIkan, kelangkaan, hargaIkan, stok])
@@ -187,7 +187,7 @@ def admin_updateIkan():
     tampilkanIkan()
     while True:
         try:
-            # membaca file ./data/daftar_ikan.csv
+            # membaca file daftar_ikan.csv
             with open("./data/daftar_ikan.csv", "r") as file:
                 # mengubah data csv menjadi list
                 dataIkanHias = list(csv.reader(file))
@@ -235,7 +235,7 @@ def admin_updateIkan():
 def admin_hapusIkan():
     tampilkanIkan()
 
-    # membaca file ./data/daftar_ikan.csv
+    # membaca file daftar_ikan.csv
     with open("./data/daftar_ikan.csv", "r") as file:
         # mengubah data csv menjadi list
         dataIkanHias = list(csv.reader(file))
@@ -250,7 +250,7 @@ def admin_hapusIkan():
                 # Hapus data dari dataIkanHias
                 del dataIkanHias[index - 1]
 
-                # Tulis ulang dataIkanHias yang sudah di-update ke ./data/daftar_ikan.csv
+                # Tulis ulang dataIkanHias yang sudah di-update ke daftar_ikan.csv
                 with open("./data/daftar_ikan.csv", "w", newline='') as file:
                     csv.writer(file).writerows(dataIkanHias)
 
@@ -265,7 +265,7 @@ def admin_hapusIkan():
 def user_pesanIkanHias():
     tampilkanIkan()
 
-    # membaca file ./data/daftar_ikan.csv
+    # membaca file daftar_ikan.csv
     with open("./data/daftar_ikan.csv", "r") as file:
         # mengubah data csv menjadi list
         dataIkanHias = list(csv.reader(file))
@@ -273,22 +273,41 @@ def user_pesanIkanHias():
     while True:
         try:
             pilihan = validasiInput(YELLOW+BOLD+"Pilih nomor ikan hias yang ingin dipesan: "+RESET, validasi_input_angka, "Hanya bisa angka", 'user index')
+            jmlhpesanan = validasiInput(YELLOW+BOLD+"Jumlah ikan hias yang ingin dipesan: "+RESET, validasi_input_angka, "Hanya bisa angka", 'user jumlah')
             pilihan = int(pilihan)
+            jmlhpesanan = int(jmlhpesanan)
+
             # Pastikan pilihan berada dalam rentang yang valid
             if 1 <= pilihan <= len(dataIkanHias):
                 ikanTerpilih = dataIkanHias[pilihan-1]
                 ikanTerpilih_copy = dataIkanHias[pilihan-1].copy()
                 
-                # membuka file ./data/keranjang.csv, dan memindahkan ikan terpilih dari ./data/daftar_ikan.csv ke ./data/keranjang.csv dengan metode 'a'/append
-                with open('./data/keranjang.csv', 'a', newline='') as file:
-                    writer = csv.writer(file)
-                    global username_sedangLogin
+                # Membaca keranjang untuk mencari apakah ikan sudah ada di dalamnya
+                keranjang_data = []
+                with open('./data/keranjang.csv', 'r') as file:
+                    keranjang_data = list(csv.reader(file))
 
-                    ikanTerpilih_copy.insert(3, username_sedangLogin)
-                    writer.writerow(ikanTerpilih_copy[:4])
-                    
+                # Flag untuk mengecek apakah ikan sudah ada di keranjang
+                ikan_ditemukan = False
+                for data in keranjang_data:
+                    if data and data[0] == ikanTerpilih_copy[0]:  # Cek ID ikan
+                        data[3] = int(data[3]) + jmlhpesanan  # Tambah jumlah pesanan
+                        ikan_ditemukan = True
+                        break
+
+                # Jika ikan belum ada di keranjang, tambahkan entri baru
+                if not ikan_ditemukan:
+                    ikanTerpilih_copy.insert(3, jmlhpesanan)
+                    ikanTerpilih_copy.insert(4, username_sedangLogin)
+                    keranjang_data.append(ikanTerpilih_copy[:5])
+
+                # Tulis kembali ke keranjang.csv
+                with open('./data/keranjang.csv', 'w', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerows(keranjang_data)
+
                     ikanTerpilih[3] = int(ikanTerpilih[3])
-                    ikanTerpilih[3] -= 1
+                    ikanTerpilih[3] -= jmlhpesanan
 
                 loading(10, 0.05)
                 print(f"\n{GREEN}{BOLD}'{dataIkanHias[pilihan-1][0]}' telah ditambahkan ke keranjang.{RESET}")
@@ -297,7 +316,7 @@ def user_pesanIkanHias():
                     # hapus ikan hias yang dipilih
                     del dataIkanHias[pilihan - 1]
 
-                # Tulis ulang dataIkanHias yang sudah di-update ke ./data/daftar_ikan.csv
+                # Tulis ulang dataIkanHias yang sudah di-update ke daftar_ikan.csv
                 with open('./data/daftar_ikan.csv', 'w', newline='') as file:
                     csv.writer(file).writerows(dataIkanHias)
                 
@@ -315,7 +334,7 @@ def user_keranjangBelanjaan():
         # Membaca file CSV dan memproses data
         with open("./data/keranjang.csv", "r") as file:
             readerKeranjang = csv.reader(file)
-            
+
             # Mengubah data CSV menjadi sebuah list
             dataIkanHias = list(readerKeranjang)
 
@@ -325,32 +344,12 @@ def user_keranjangBelanjaan():
             else:
                 # Filter data berdasarkan username_sedangLogin
                 dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
-
                 dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
-
-                # Mengurutkan ikan berdasarkan jenis untuk menampilkan tabel
-                dataIkanHias_login = sorted(dataIkanHias_login, key=lambda x: x[0])
-
-                # Tampilkan tabel dengan indeks asli
+                
                 table = []
-                ikan_terdeteksi = {}
-                for i, dataBaris in enumerate(dataIkanHias_login):
-                    jenis_ikan = dataBaris[0]
-                    if jenis_ikan in ikan_terdeteksi:
-                        ikan_terdeteksi[jenis_ikan]['jumlah'] += 1
-                    else:
-                        ikan_terdeteksi[jenis_ikan] = {'data': dataBaris, 'jumlah': 1}
-
-                print(ikan_terdeteksi)
-
-                for i, (jenis_ikan, infoIkan) in enumerate(ikan_terdeteksi.items()):
-                    print(jenis_ikan)
-                    print(infoIkan)
-                    print(*infoIkan['data'])
-                    print(infoIkan['jumlah'])
-                    row = [i + 1, *infoIkan['data'], infoIkan['jumlah']]
+                for i, data in enumerate(dataIkanHias_login):
+                    row = i+1,*data[:4]
                     table.append(row)
-                    del row[-2]
 
                 # Menampilkan hasil akhir dalam bentuk tabel
                 headers = ["No", "Jenis Ikan", "Kelangkaan", "Harga", "Jumlah"]
@@ -370,18 +369,24 @@ def user_keranjangBelanjaan():
                     if konfirInginHapus == "y":
                         hapusDariKeranjang = validasiInput("No ikan hias yang ingin dihapus : ", validasi_input_angka, "Hanya bisa angka", 'user index')
                         hapusDariKeranjang = int(hapusDariKeranjang)
-                        
                         if 1 <= hapusDariKeranjang <= len(table):
-                            # Menyimpan jenis ikan yang akan dihapus untuk pesan konfirmasi
-                            jenis_ikan = table[hapusDariKeranjang - 1][1]
-                            
-                            # Menghapus satu item dari dataIkanHias_login
-                            for i in range(len(dataIkanHias_login)):
-                                if dataIkanHias_login[i][0] == jenis_ikan and dataIkanHias_login[i][-1] == username_sedangLogin:
-                                    del dataIkanHias_login[i]
-                                    break
+                            with open("./data/daftar_ikan.csv", "r") as file:
+                                dataIkanHias_InDaftar = list(csv.reader(file))
 
-                            # Tulis ulang dataIkanHias yang sudah di-update ke ./data/keranjang.csv
+                                for data in dataIkanHias_InDaftar:
+                                    if data[0] == dataIkanHias_login[hapusDariKeranjang-1][0]:
+                                        data[3] = int(data[3]) + int(dataIkanHias_login[hapusDariKeranjang-1][3])
+                                        print(data[3])
+
+                            # Tulis ulang dataIkanHias_InDaftar yang sudah di-update ke daftar_ikan.csv
+                            with open("./data/daftar_ikan.csv", "w", newline='') as file:
+                                writer = csv.writer(file)
+                                writer.writerows(dataIkanHias_InDaftar)
+
+                            # Menghapus satu item dari dataIkanHias_login
+                            del dataIkanHias_login[hapusDariKeranjang - 1]
+
+                            # Tulis ulang dataIkanHias yang sudah di-update ke keranjang.csv
                             with open("./data/keranjang.csv", "w", newline='') as file:
                                 writer = csv.writer(file)
                                 writer.writerows(dataIkanHias_login)
