@@ -66,6 +66,7 @@ def lanjut():
     input()
     clear()
 
+# fungsi untuk validasi input
 def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:str, cekJenisValidasi:str, *valueNoUpdate):
     while True:
         try:
@@ -94,6 +95,7 @@ def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
 
+# fungsi untuk memunculkan opsi pilihan
 def opsiMenu(*banyakOpsi):
     global answers
     totalOpsi = []
@@ -121,11 +123,17 @@ def admin_tambahIkan():
 ''')
 
     print(f'Input {RED}{BOLD}"x"{RESET} jika ingin kembali\n')
+    # input tambah jenis ikan
     jenisIkan = validasiInput("Tambah jenis ikan hias baru : ", validasi_input_huruf, "Hanya bisa huruf", 'admin create')
+    
+    # input opsi tambah kelangkaan ikan
     print("Tambah kelangkaan ikan hias baru : ")
     opsiMenu('Umum', 'Agak Langka', 'Langka', 'Sangat Langka')
     kelangkaan = answers['opsi']
+    
+    # input tambah harga ikan
     hargaIkan = validasiInput("Tambah harga ikan hias baru : ", validasi_input_angka, "Hanya bisa angka", 'admin create')
+    # input tambah stok ikan
     stok = validasiInput("Tambah stok ikan hias baru : ", validasi_input_angka, "Hanya bisa angka", 'admin create')
 
     # membuka file daftar_ikan.csv, dan menambah data baru dengan metode 'a'/append
@@ -154,7 +162,7 @@ def admin_tambahIkan():
 
 # menampilkan seluruh data ikan hias
 def tampilkanIkan():
-    # menggunakan try except sebagai error heandling
+    # menggunakan try except sebagai error handling
     try:
         # bila file ditemukan maka lanjut ke proses selanjutnya
         with open("./data/daftar_ikan.csv", "r") as file:
@@ -376,7 +384,6 @@ def user_keranjangBelanjaan():
                                 for data in dataIkanHias_InDaftar:
                                     if data[0] == dataIkanHias_login[hapusDariKeranjang-1][0]:
                                         data[3] = int(data[3]) + int(dataIkanHias_login[hapusDariKeranjang-1][3])
-                                        print(data[3])
 
                             # Tulis ulang dataIkanHias_InDaftar yang sudah di-update ke daftar_ikan.csv
                             with open("./data/daftar_ikan.csv", "w", newline='') as file:
@@ -393,7 +400,6 @@ def user_keranjangBelanjaan():
                                 writer.writerows(dataIkanHias_tidakLogin)
 
                             print(GREEN+BOLD+"\nBerhasil menghapus ikan hias dari keranjang"+RESET)
-                            lanjut()
                             break
                         else:
                             print("Ikan hias tidak ditemukan!")
@@ -403,7 +409,7 @@ def user_keranjangBelanjaan():
     # bila file tidak ditemukan maka muncul pesan error dengan menangkap error FileNotFoundError
     except FileNotFoundError:
         print("File tidak ditemukan, buat data baru terlebih dahulu.")
-        lanjut()                
+    lanjut()                
 
 def user_checkout():
     print('''
@@ -443,11 +449,6 @@ def user_checkout():
 
                         if bayar >= jumlah:
                             print(GREEN+BOLD+"\nBerhasil melakukan pembayaran"+RESET)
-
-                            with open("./data/checkout.csv", "a", newline='') as file:
-                                writer = csv.writer(file)
-                                for baris in dataIkanHias_login:
-                                    writer.writerow(baris)
                                 
                             del dataIkanHias_login
 
@@ -488,30 +489,29 @@ def menuAdmin():
         opsiMenu("[1] Tambah Ikan Hias", "[2] Tampilkan Ikan Hias", "[3] Ubah Ikan Hias", "[4] Hapus Ikan HIas", "[0] Logout")
 
         try:
-            # Menjalankan fungsi berdasarkan pilihan
-            if answers:
-                pilihan = answers["opsi"]
+            pilihan = answers["opsi"]
 
-                if '[1]' in pilihan:
-                    clear()
-                    admin_tambahIkan()
-                elif '[2]' in pilihan:
-                    clear()
-                    tampilkanIkan()
-                    lanjut()
-                elif '[3]' in pilihan:
-                    clear()
-                    admin_updateIkan()
-                elif '[4]' in pilihan:
-                    clear()
-                    admin_hapusIkan()
-                elif '[0]' in pilihan:
-                    clear()
-                    print("Logout")
-                    time.sleep(1)
-                    menuUtama()
-        except KeyboardInterrupt as error:
-            print(f"{RED}{BOLD}Program error, anda menekan key yang salah{error}{RESET}")
+            # cek apakah ada string '[nomor]' di dalam variabel pilihan, jika ada jalankan sesuai kondisi
+            if '[1]' in pilihan:
+                clear()
+                admin_tambahIkan()
+            elif '[2]' in pilihan:
+                clear()
+                tampilkanIkan()
+                lanjut()
+            elif '[3]' in pilihan:
+                clear()
+                admin_updateIkan()
+            elif '[4]' in pilihan:
+                clear()
+                admin_hapusIkan()
+            elif '[0]' in pilihan:
+                clear()
+                print("Logout")
+                time.sleep(1)
+                menuUtama()
+        except TypeError:
+            print(f"{RED}{BOLD}Program terhenti{RESET}")
             exit(0)
 
 def menuUser():
@@ -525,32 +525,32 @@ def menuUser():
         opsiMenu("[1] Daftar ikan hias", "[2] Pesan ikan hias", "[3] Keranjang belanja", "[4] Checkout", "[0] Logout")
         
         try:
-            # Menjalankan fungsi berdasarkan pilihan
-            if answers:
-                pilihan = answers["opsi"]
+            pilihan = answers["opsi"]
 
-                if '[1]' in pilihan:
-                    clear()
-                    tampilkanIkan()
-                    lanjut()
-                elif '[2]' in pilihan:
-                    clear()
-                    user_pesanIkanHias()
-                elif '[3]' in pilihan:
-                    clear()
-                    user_keranjangBelanjaan()
-                elif '[4]' in pilihan:
-                    clear()
-                    user_checkout()
-                    clear()
-                elif '[0]' in pilihan:
-                    clear()
-                    print("Logout")
-                    time.sleep(1)
-                    menuUtama()
-        except KeyboardInterrupt as error:
-            print(f"{RED}{BOLD}Program error, anda menekan key yang salah{error}{RESET}")
+            # cek apakah ada string '[nomor]' di dalam variabel pilihan, jika ada jalankan sesuai kondisi
+            if '[1]' in pilihan:
+                clear()
+                tampilkanIkan()
+                lanjut()
+            elif '[2]' in pilihan:
+                clear()
+                user_pesanIkanHias()
+            elif '[3]' in pilihan:
+                clear()
+                user_keranjangBelanjaan()
+            elif '[4]' in pilihan:
+                clear()
+                user_checkout()
+                clear()
+            elif '[0]' in pilihan:
+                clear()
+                print("Logout")
+                time.sleep(1)
+                menuUtama()
+        except TypeError:
+            print(f"{RED}{BOLD}Program terhenti{RESET}")
             exit(0)
+
 def login():
     global username_sedangLogin  # Menandai bahwa kita menggunakan variabel global
     clear()
@@ -662,20 +662,19 @@ def menuUtama():
     try:
         opsiMenu('[1] Login', '[2] Register', '[0] Keluar')
 
-        # Menjalankan fungsi berdasarkan pilihan
-        if answers:
-            pilihan = answers["opsi"]
+        pilihan = answers["opsi"]
 
-            if "[1]" in pilihan:
-                login()
-            elif "[2]" in pilihan:
-                registrasi()
-                menuUtama()
-            elif "[0]" in pilihan:
-                print(RED+BOLD+"Program berhenti!"+RESET)
-                exit(0)
-    except KeyboardInterrupt as error:
-        print(f"{RED}{BOLD}Program error, anda menekan key yang salah{error}{RESET}")
+        # cek apakah ada string '[nomor]' di dalam variabel pilihan, jika ada jalankan sesuai kondisi
+        if "[1]" in pilihan:
+            login()
+        elif "[2]" in pilihan:
+            registrasi()
+            menuUtama()
+        elif "[0]" in pilihan:
+            print(RED+BOLD+"Program berhenti!"+RESET)
+            exit(0)
+    except TypeError:
+        print(f"{RED}{BOLD}Program terhenti{RESET}")
         exit(0)
 
 menuUtama()
