@@ -1,11 +1,11 @@
 import os
-import csv
-import random
-import time
-from tqdm import tqdm
-from tabulate import tabulate
-from typing import Callable
-import inquirer
+import tabulate # library untuk tampilan tabel
+import random # library untuk mendapatkan nilai random
+import time 
+from tqdm import tqdm # library untuk loading bar
+from typing import Callable # library untuk type hints
+import inquirer # library untuk menu interaktif
+import csv # library untuk mengelola data eksternal csv
 
 # Warna
 BOLD = '\033[1m'
@@ -35,12 +35,14 @@ def clear():
 # validasi input bertipe string
 def validasi_input_huruf(charInput:str) -> bool:
     for char in charInput:
+        # cek apakah karakter bukan karakter atau spasi
         if not (char.isalpha() or char.isspace()):
             return False
     return True
 
 # validasi input bertipe number
 def validasi_input_angka(numInput:int) -> bool:
+    # True jika numInput sepenuhnya angka
     return numInput.isdigit()
 
 # fake loading
@@ -49,16 +51,23 @@ def loading(loadingLength:int, delay:int):
         time.sleep(delay)
 
 # fake loading (2)
+# ambil nilai random dari 1-2
 random = random.randint(1, 2)
 def wait(index:int):
     clear()
     print("Loading", end='')
+    # perulangan untuk menampilkan efek loading berupa titik-titik sampai 3
     for i in range(3):
+        # buat agar titik langsung ditampilkan setelah jeda
         print(".", end='', flush=True)
-        time.sleep(0.2)
+        time.sleep(0.1)
 
+    # selama index lebih kecil dari nilai random maka akan melakukan rekursif
     if index < random:
         wait(index+1)
+
+def pesanInputExit():
+    print(f'{BOLD}Input {RED}"exit"{WHITE} jika ingin kembali{RESET}\n')
 
 # menahan dan melanjutkan program
 def lanjut():
@@ -70,27 +79,36 @@ def lanjut():
 def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:str, cekJenisValidasi:str, *valueNoUpdate):
     while True:
         try:
+            # menampilkan pesan input
             inputVariable = input(prompt).strip()
-            if inputVariable == 'x':
+            # cek apakah isi input sama dengan 'exit'
+            if inputVariable == 'exit':
+                # cek apakah 'admin' terdapat di dalam cekJenisValidasi
                 if 'admin' in cekJenisValidasi:
                     menuAdmin()
                 else:
                     menuUser()
             else:
+                # cek apakah 'update' terdapat di dalam cekJenisValidasi
                 if 'update' in cekJenisValidasi :
+                    # jika input kosong
                     if not inputVariable:
+                        # buat agar input kosong tetap diisi oleh data saat ini 
                         inputVariable = str(*valueNoUpdate)
                 else:
                     if not inputVariable:
                         raise ValueError("Tidak boleh kosong")
                     
+                # cek apakah 'angka' terdapat di dalam pesanError
                 if 'angka' in pesanError: 
+                    # jika input diawali '-' dan diikuti angka
                     if inputVariable.startswith("-") and inputVariable[1:].isdigit():
+                        # keluarkan error tidak bisa negatif
                         raise ValueError("Hanya bisa bilangan positif")
                 if not fungsiValidasi(inputVariable) or '-' in inputVariable:
                     raise ValueError(pesanError)
 
-                return inputVariable # jika input valid, kembali 
+                return inputVariable
 
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
@@ -99,6 +117,7 @@ def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:
 def opsiMenu(*banyakOpsi):
     global answers
     totalOpsi = []
+    # perulangan mengambil tiap opsi lalu menaruhnya di dalam list totalOpsi
     for opsi in banyakOpsi:
         totalOpsi.append(opsi)
     option = [
@@ -106,6 +125,7 @@ def opsiMenu(*banyakOpsi):
             "opsi",
             message=YELLOW+"Pilih"+RESET,
             choices=[
+                # melakukan unpacking
                 *totalOpsi
             ],
         ),
@@ -114,7 +134,39 @@ def opsiMenu(*banyakOpsi):
     # mendapatkan jawaban
     answers = inquirer.prompt(option)
 
-# menambah data ikan hias baru
+# menampilkan seluruh data ikan hias
+def tampilkanIkan():
+    # menggunakan try except sebagai error handling
+    try:
+        # bila file ditemukan maka lanjut ke proses selanjutnya
+        with open("./data/daftar_ikan.csv", "r") as file:
+            reader = csv.reader(file)
+
+            # ubah data csv menjadi sebuah list
+            dataIkanHias = list(reader)
+            
+            # jika dataIkanHias/data ada maka jalankan
+            if dataIkanHias:
+                # headers kolom
+                headers = ["No", "Jenis Ikan", "Kelangkaan", "Harga", "Stok"]
+                
+                # baris
+                # *baris adalah unpacking untuk menambahkan seluruh isi baris ke dalam list
+                # Dengan list comprehension, urutan dibalik: 
+                    # ekspresi yang diinginkan diletakkan di depan, sementara loop diletakkan di belakang.
+                table = [[index + 1, *baris] for index, baris in enumerate(dataIkanHias)]
+                
+                print(tabulate(table, headers, tablefmt="grid"))
+            else:
+                print("Data kosong.")
+
+    # bile file tidak ditemukan maka muncul pesan error dengan menangkap error FileNotFoundError
+    except FileNotFoundError:
+        print("File tidak ditemukan, buat data baru terlebih dahulu.")
+
+# --------- PROGRAM UNTUK MENU ADMIN ----------------------------
+
+# admin menambah data ikan hias baru
 def admin_tambahIkan():
     print('''
 ░▀█▀░█▀█░█▄█░█▀▄░█▀█░█░█░░░▀█▀░█░█░█▀█░█▀█░░░█░█░▀█▀░█▀█░█▀▀
@@ -122,7 +174,7 @@ def admin_tambahIkan():
 ░░▀░░▀░▀░▀░▀░▀▀░░▀░▀░▀░▀░░░▀▀▀░▀░▀░▀░▀░▀░▀░░░▀░▀░▀▀▀░▀░▀░▀▀▀
 ''')
 
-    print(f'Input {RED}{BOLD}"x"{RESET} jika ingin kembali\n')
+    pesanInputExit()
     # input tambah jenis ikan
     jenisIkan = validasiInput("Tambah jenis ikan hias baru : ", validasi_input_huruf, "Hanya bisa huruf", 'admin create')
     
@@ -159,40 +211,10 @@ def admin_tambahIkan():
     print(GREEN+BOLD+"\nBerhasil menambah data ikan hias!"+RESET)
     lanjut()
 
-
-# menampilkan seluruh data ikan hias
-def tampilkanIkan():
-    # menggunakan try except sebagai error handling
-    try:
-        # bila file ditemukan maka lanjut ke proses selanjutnya
-        with open("./data/daftar_ikan.csv", "r") as file:
-            reader = csv.reader(file)
-
-            # ubah data csv menjadi sebuah list
-            dataIkanHias = list(reader)
-            
-            # jika dataIkanHias/data ada maka jalankan
-            if dataIkanHias:
-                # headers kolom
-                headers = ["No", "Jenis Ikan", "Kelangkaan", "Harga", "Stok"]
-                
-                # baris
-                # *baris adalah unpacking untuk menambahkan seluruh isi baris ke dalam list
-                # Dengan list comprehension, urutan dibalik: 
-                    # ekspresi yang diinginkan diletakkan di depan, sementara loop diletakkan di belakang.
-                table = [[index + 1, *baris] for index, baris in enumerate(dataIkanHias)]
-                
-                print(tabulate(table, headers, tablefmt="grid"))
-            else:
-                print("Data kosong.")
-
-    # bile file tidak ditemukan maka muncul pesan error dengan menangkap error FileNotFoundError
-    except FileNotFoundError:
-        print("File tidak ditemukan, buat data baru terlebih dahulu.")
-
-# mengupdate data ikan hias
+# admin mengupdate data ikan hias
 def admin_updateIkan():
     tampilkanIkan()
+    pesanInputExit()
     while True:
         try:
             # membaca file daftar_ikan.csv
@@ -240,9 +262,10 @@ def admin_updateIkan():
         except FileNotFoundError:
             print("File tidak ditemukan, buat data baru terlebih dahulu.")
         
+# admin menghapus data ikan hias
 def admin_hapusIkan():
     tampilkanIkan()
-
+    pesanInputExit()
     # membaca file daftar_ikan.csv
     with open("./data/daftar_ikan.csv", "r") as file:
         # mengubah data csv menjadi list
@@ -270,9 +293,12 @@ def admin_hapusIkan():
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
 
+# --------- PROGRAM UNTUK MENU USER -----------------------------
+
+# user memesan ikan hias
 def user_pesanIkanHias():
     tampilkanIkan()
-
+    pesanInputExit()
     # membaca file daftar_ikan.csv
     with open("./data/daftar_ikan.csv", "r") as file:
         # mengubah data csv menjadi list
@@ -337,6 +363,7 @@ def user_pesanIkanHias():
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
         
+# user tampilkan keranjang belanja
 def user_keranjangBelanjaan():
     try:
         # Membaca file CSV dan memproses data
@@ -346,14 +373,15 @@ def user_keranjangBelanjaan():
             # Mengubah data CSV menjadi sebuah list
             dataIkanHias = list(readerKeranjang)
 
-            if len(dataIkanHias) == 0:
+            # Filter data berdasarkan username_sedangLogin
+            dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
+            dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
+
+            if len(dataIkanHias_login) == 0:
                 print('Keranjang belanja kosong, silahkan pesan terlebih dahulu😊')
             
-            else:
-                # Filter data berdasarkan username_sedangLogin
-                dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
-                dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
-                
+            else:                
+                pesanInputExit()
                 table = []
                 for i, data in enumerate(dataIkanHias_login):
                     row = i+1,*data[:4]
@@ -411,6 +439,7 @@ def user_keranjangBelanjaan():
         print("File tidak ditemukan, buat data baru terlebih dahulu.")
     lanjut()                
 
+# user melakukan pembayaran
 def user_checkout():
     print('''
 ░█▀█░█▀▀░█▄█░█▀▄░█▀█░█░█░█▀█░█▀▄░█▀█░█▀█
@@ -442,6 +471,7 @@ def user_checkout():
                     konfirPembayaran = input(YELLOW+BOLD+"Yakin ingin melakukan pembayaran (y/t) ? "+RESET).strip().lower()
                     
                     if konfirPembayaran == "y":
+                        pesanInputExit()
                         bayar = validasiInput("Input uang yang dimiliki : ", validasi_input_angka, "Hanya bisa angka", 'nominal')
                         bayar = int(bayar)
 
@@ -478,6 +508,9 @@ def user_checkout():
 
     lanjut()
     
+# --------- PROGRAM TAMPILAN MENU INTERAKTIF BERDASARKAN ROLE ---
+
+# menu admin
 def menuAdmin():
     clear()
     while True:
@@ -512,8 +545,9 @@ def menuAdmin():
                 menuUtama()
         except TypeError:
             print(f"{RED}{BOLD}Program terhenti{RESET}")
-            exit(0)
+            menuAdmin()
 
+# menu user
 def menuUser():
     clear()
     while True:
@@ -549,8 +583,11 @@ def menuUser():
                 menuUtama()
         except TypeError:
             print(f"{RED}{BOLD}Program terhenti{RESET}")
-            exit(0)
+            menuUser()
 
+# --------- PROGRAM LOGIN DAN REGISTRASI ------------------------
+
+# login
 def login():
     global username_sedangLogin  # Menandai bahwa kita menggunakan variabel global
     clear()
@@ -584,12 +621,12 @@ def login():
                         if int(role) == 1:
                             wait(0)
                             print(RED+BOLD+"\nLogin sebagai admin 👑"+RESET)
-                            time.sleep(1.5)
+                            time.sleep(1)
                             menuAdmin()
                         elif int(role) == 0:
                             wait(0)
                             print(RED+BOLD+"\nLogin sebagai user 👤"+RESET)
-                            time.sleep(1.5)
+                            time.sleep(1)
                             menuUser()
                         break  # Keluar dari loop ketika akun ditemukan dan login berhasil
                 if login_sukses:
@@ -603,6 +640,7 @@ def login():
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
 
+# registrasi akun user baru
 def registrasi():
     clear()
     print(BLUE+
@@ -651,6 +689,8 @@ def registrasi():
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
 
+# --------- MENU UTAMA PROGRAM ----------------------------------
+
 def menuUtama():
     clear()
     print(BOLD+BLUE+
@@ -675,6 +715,6 @@ def menuUtama():
             exit(0)
     except TypeError:
         print(f"{RED}{BOLD}Program terhenti{RESET}")
-        exit(0)
+        menuUtama()
 
 menuUtama()
