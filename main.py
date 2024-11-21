@@ -1,7 +1,7 @@
-import os
-import tabulate # library untuk tampilan tabel
+import os #menyediakan puluhan fungsi untuk berinteraksi dengan sistem operasi
+from tabulate import tabulate # library untuk tampilan tabel
 import random # library untuk mendapatkan nilai random
-import time 
+import time #library untuk jeda time sleep
 from tqdm import tqdm # library untuk loading bar
 from typing import Callable # library untuk type hints
 import inquirer # library untuk menu interaktif
@@ -9,22 +9,10 @@ import csv # library untuk mengelola data eksternal csv
 
 # Warna
 BOLD = '\033[1m'
-BLACK = '\033[30m'
 RED = '\033[31m'
 GREEN = '\033[32m'
 YELLOW = '\033[33m' 
 BLUE = '\033[34m'
-MAGENTA = '\033[35m'
-CYAN = '\033[36m'
-LIGHT_GRAY = '\033[37m'
-LIGHT_GREEN = '\33[32;1m'
-DARK_GRAY = '\033[90m'
-BRIGHT_RED = '\033[91m'
-BRIGHT_GREEN = '\033[92m'
-BRIGHT_YELLOW = '\033[93m'
-BRIGHT_BLUE = '\033[94m'
-BRIGHT_MAGENTA = '\033[95m'
-BRIGHT_CYAN = '\033[96m'
 WHITE = '\033[97m'
 RESET = '\033[0m' 
 
@@ -90,6 +78,7 @@ def validasiInput(prompt:str, fungsiValidasi: Callable[[str], bool], pesanError:
                     menuUser()
             else:
                 # cek apakah 'update' terdapat di dalam cekJenisValidasi
+                # setiap cekJenisValidasi yang memiliki nilai argumen 'update' berarti jenis inputnya merupakan untuk melakukan update
                 if 'update' in cekJenisValidasi :
                     # jika input kosong
                     if not inputVariable:
@@ -134,33 +123,32 @@ def opsiMenu(*banyakOpsi):
     # mendapatkan jawaban
     answers = inquirer.prompt(option)
 
-# menampilkan seluruh data ikan hias
 def tampilkanIkan():
-    # menggunakan try except sebagai error handling
     try:
-        # bila file ditemukan maka lanjut ke proses selanjutnya
         with open("./data/daftar_ikan.csv", "r") as file:
-            reader = csv.reader(file)
-
-            # ubah data csv menjadi sebuah list
-            dataIkanHias = list(reader)
+            reader = csv.DictReader(file)
             
-            # jika dataIkanHias/data ada maka jalankan
+            # Mengonversi seluruh data CSV menjadi sebuah dictionary
+            # Gunakan nama ikan (Jenis Ikan) sebagai key, dan data lainnya sebagai nilai (value) dalam dictionary
+            # membaca tiap baris berdasarkan nama headernya
+            dataIkanHias = {row["Jenis Ikan"]: {"Kelangkaan": row["Kelangkaan"], "Harga": row["Harga"], "Stok": row["Stok"]}
+                            for row in reader}
+            
             if dataIkanHias:
-                # headers kolom
                 headers = ["No", "Jenis Ikan", "Kelangkaan", "Harga", "Stok"]
                 
-                # baris
-                # *baris adalah unpacking untuk menambahkan seluruh isi baris ke dalam list
-                # Dengan list comprehension, urutan dibalik: 
-                    # ekspresi yang diinginkan diletakkan di depan, sementara loop diletakkan di belakang.
-                table = [[index + 1, *baris] for index, baris in enumerate(dataIkanHias)]
+                # Buat table dengan dictionary
+                table = [
+                    # jenis_ikan sebagai key, dan data adalah valuenya
+                    [index + 1, jenis_ikan, data["Kelangkaan"], data["Harga"], data["Stok"]]
+                    for index, (jenis_ikan, data) in enumerate(dataIkanHias.items())
+                ]
                 
+                # Menampilkan tabel menggunakan tabulate
                 print(tabulate(table, headers, tablefmt="grid"))
             else:
                 print("Data kosong.")
 
-    # bile file tidak ditemukan maka muncul pesan error dengan menangkap error FileNotFoundError
     except FileNotFoundError:
         print("File tidak ditemukan, buat data baru terlebih dahulu.")
 
@@ -228,19 +216,25 @@ def admin_updateIkan():
             index = int(index)
             
             # Pastikan index berada dalam rentang yang valid
-            if 0 < index-1 < len(dataIkanHias):    
+            if 0 < index < len(dataIkanHias):    
                 # unpacking
-                jenisIkan, kelangkaan, hargaIkan, stok = dataIkanHias[index-1]
+                jenisIkan, kelangkaan, hargaIkan, stok = dataIkanHias[index]
 
+                # input mengubah kelangkaan ikan (opsional)
                 jenisIkan_baru = validasiInput(f"Ubah jenis ikan hias {BOLD}(enter jika tidak ingin mengubah){RESET} : ", validasi_input_huruf, "Hanya bisa huruf", 'admin update', jenisIkan)
+                
+                # input opsi untuk mengubah kelangkaan ikan (wajib memilih)
                 print("Ubah kelangkaan ikan hias : ")
                 opsiMenu('Umum', 'Agak Langka', 'Langka', 'Sangat Langka')
                 kelangkaan_baru = answers['opsi']
+                
+                # input mengubah harga ikan (opsional)
                 hargaIkan_baru = validasiInput(f"Ubah harga ikan hias {BOLD}(enter jika tidak ingin mengubah){RESET} : ", validasi_input_angka, "Hanya bisa angka", 'admin update', hargaIkan)
+                # input mengubah stok ikan (opsional)
                 stok_baru = validasiInput(f"Ubah stok ikan hias {BOLD}(enter jika tidak ingin mengubah){RESET} : ", validasi_input_angka, "Hanya bisa angka", 'admin update', stok)
 
                 # mengambil data yang dipilih
-                dataIkanHias[index-1] = jenisIkan_baru, kelangkaan_baru, hargaIkan_baru, stok_baru
+                dataIkanHias[index] = jenisIkan_baru, kelangkaan_baru, hargaIkan_baru, stok_baru
             
                 # mengubah isi dari dataIkanHias yang dipilih
                 with open("./data/daftar_ikan.csv", "w", newline='') as file:
@@ -279,7 +273,7 @@ def admin_hapusIkan():
             # Pastikan index berada dalam rentang yang valid
             if 0 <= index - 1 < len(dataIkanHias):
                 # Hapus data dari dataIkanHias
-                del dataIkanHias[index - 1]
+                del dataIkanHias[index]
 
                 # Tulis ulang dataIkanHias yang sudah di-update ke daftar_ikan.csv
                 with open("./data/daftar_ikan.csv", "w", newline='') as file:
@@ -303,7 +297,7 @@ def user_pesanIkanHias():
     with open("./data/daftar_ikan.csv", "r") as file:
         # mengubah data csv menjadi list
         dataIkanHias = list(csv.reader(file))
-
+    
     while True:
         try:
             pilihan = validasiInput(YELLOW+BOLD+"Pilih nomor ikan hias yang ingin dipesan: "+RESET, validasi_input_angka, "Hanya bisa angka", 'user index')
@@ -313,26 +307,33 @@ def user_pesanIkanHias():
 
             # Pastikan pilihan berada dalam rentang yang valid
             if 1 <= pilihan <= len(dataIkanHias):
-                ikanTerpilih = dataIkanHias[pilihan-1]
-                ikanTerpilih_copy = dataIkanHias[pilihan-1].copy()
+                # digunakan agar keaslian data pada daftar_ikan.csv tidak berubah sehingga mudah ketika menulis ulang data menggunakan 'w'
+                ikanTerpilih = dataIkanHias[pilihan]
+                # buat copy list agar nanti digunakan hanya untuk dimasukkan ke data keranjang.csv
+                ikanTerpilih_copy = dataIkanHias[pilihan].copy()
                 
                 # Membaca keranjang untuk mencari apakah ikan sudah ada di dalamnya
                 keranjang_data = []
                 with open('./data/keranjang.csv', 'r') as file:
                     keranjang_data = list(csv.reader(file))
+                    # Filter data berdasarkan username yang saat ini sedang login
+                    keranjang_data_login = [baris for baris in keranjang_data if baris[-1] == username_sedangLogin]
 
-                # Flag untuk mengecek apakah ikan sudah ada di keranjang
+                # Untuk mengecek apakah ikan sudah ada di keranjang
                 ikan_ditemukan = False
-                for data in keranjang_data:
-                    if data and data[0] == ikanTerpilih_copy[0]:  # Cek ID ikan
+                for data in keranjang_data_login:
+                    if data and data[0] == ikanTerpilih_copy[0]:  # Cek jenis ikan
                         data[3] = int(data[3]) + jmlhpesanan  # Tambah jumlah pesanan
                         ikan_ditemukan = True
                         break
 
-                # Jika ikan belum ada di keranjang, tambahkan entri baru
+                # Jika ikan belum ada di keranjang, tambahkan data baru
                 if not ikan_ditemukan:
+                    # insert jumlah pesanan ke kolom ke 4
                     ikanTerpilih_copy.insert(3, jmlhpesanan)
+                    # insert username yang sedang memesan ke kolom ke 5
                     ikanTerpilih_copy.insert(4, username_sedangLogin)
+                    # tambahkan 5 kolom data
                     keranjang_data.append(ikanTerpilih_copy[:5])
 
                 # Tulis kembali ke keranjang.csv
@@ -344,11 +345,11 @@ def user_pesanIkanHias():
                     ikanTerpilih[3] -= jmlhpesanan
 
                 loading(10, 0.05)
-                print(f"\n{GREEN}{BOLD}'{dataIkanHias[pilihan-1][0]}' telah ditambahkan ke keranjang.{RESET}")
+                print(f"\n{GREEN}{BOLD}'{dataIkanHias[pilihan][0]}' telah ditambahkan ke keranjang.{RESET}")
                 
                 if ikanTerpilih[3] < 1:
                     # hapus ikan hias yang dipilih
-                    del dataIkanHias[pilihan - 1]
+                    del dataIkanHias[pilihan]
 
                 # Tulis ulang dataIkanHias yang sudah di-update ke daftar_ikan.csv
                 with open('./data/daftar_ikan.csv', 'w', newline='') as file:
@@ -381,15 +382,16 @@ def user_keranjangBelanjaan():
                 print('Keranjang belanja kosong, silahkan pesan terlebih dahulu😊')
             
             else:                
-                pesanInputExit()
-                table = []
+                tableRow = []
                 for i, data in enumerate(dataIkanHias_login):
                     row = i+1,*data[:4]
-                    table.append(row)
+                    tableRow.append(row)
 
                 # Menampilkan hasil akhir dalam bentuk tabel
                 headers = ["No", "Jenis Ikan", "Kelangkaan", "Harga", "Jumlah"]
-                print(tabulate(table, headers, tablefmt="grid"))
+                print(tabulate(tableRow, headers, tablefmt="grid"))
+                
+                pesanInputExit()
                 
                 while True:    
                     # konfirmasi apakah ingin menghapus ikan dari keranjang belanja 
@@ -397,31 +399,41 @@ def user_keranjangBelanjaan():
                     
                     if konfirInginHapus in ["y", "t"]:
                         break
+                    elif konfirInginHapus == 'exit':
+                        menuUser()
                     else:
-                        print("Input tidak valid.")
+                        print("Input tidak valid, hanya bisa (y/t).")
                 
                 while True:
                     # Hapus ikan dari keranjang
                     if konfirInginHapus == "y":
                         hapusDariKeranjang = validasiInput("No ikan hias yang ingin dihapus : ", validasi_input_angka, "Hanya bisa angka", 'user index')
                         hapusDariKeranjang = int(hapusDariKeranjang)
-                        if 1 <= hapusDariKeranjang <= len(table):
+                        
+                        # cek apakah nomor yang dipilih ada
+                        if 1 <= hapusDariKeranjang <= len(tableRow):
                             with open("./data/daftar_ikan.csv", "r") as file:
                                 dataIkanHias_InDaftar = list(csv.reader(file))
 
                                 for data in dataIkanHias_InDaftar:
-                                    if data[0] == dataIkanHias_login[hapusDariKeranjang-1][0]:
-                                        data[3] = int(data[3]) + int(dataIkanHias_login[hapusDariKeranjang-1][3])
+                                    # cek jenis ikan apakah sama dengan jenis ikan yang dipilih
+                                    if data[0] == dataIkanHias_login[hapusDariKeranjang][0]:
+                                        # ubah kembali data stok pada daftar_ikan.csv
+                                            # dengan menambah stok saat ini dan stok pada ikan hias yang dipilih untuk dihapus dari keranjang
+                                        
+                                        # semisal stok saat ini 3 dan stok pada ikan hias yang dipilih 2 maka stok pada
+                                            # daftar_ikan.csv akan menambah lagi
+                                        data[3] = int(data[3]) + int(dataIkanHias_login[hapusDariKeranjang][3])
 
                             # Tulis ulang dataIkanHias_InDaftar yang sudah di-update ke daftar_ikan.csv
                             with open("./data/daftar_ikan.csv", "w", newline='') as file:
                                 writer = csv.writer(file)
                                 writer.writerows(dataIkanHias_InDaftar)
 
-                            # Menghapus satu item dari dataIkanHias_login
-                            del dataIkanHias_login[hapusDariKeranjang - 1]
+                            # Hapus ikan hias yang dipilih dari keranjang.csv
+                            del dataIkanHias_login[hapusDariKeranjang]
 
-                            # Tulis ulang dataIkanHias yang sudah di-update ke keranjang.csv
+                            # Tulis ulang dataIkanHias ke keranjang.csv
                             with open("./data/keranjang.csv", "w", newline='') as file:
                                 writer = csv.writer(file)
                                 writer.writerows(dataIkanHias_login)
@@ -446,6 +458,7 @@ def user_checkout():
 ░█▀▀░█▀▀░█░█░█▀▄░█▀█░░█░░█▀█░█▀▄░█▀█░█░█
 ░▀░░░▀▀▀░▀░▀░▀▀░░▀░▀░░▀░░▀░▀░▀░▀░▀░▀░▀░▀
 ''')
+    pesanInputExit()
     try:
         with open("./data/keranjang.csv", "r") as file:
             reader = csv.reader(file)
@@ -453,9 +466,10 @@ def user_checkout():
             # Mengubah data CSV menjadi sebuah list
             dataIkanHias = list(reader)
                         
-            # Filter data berdasarkan username_sedangLogin
+            # Filter data berdasarkan username yang saat ini sedang login
             dataIkanHias_login = [baris for baris in dataIkanHias if baris[-1] == username_sedangLogin]
 
+            # Filter data berdasarkan username yang saat ini tidak login
             dataIkanHias_tidakLogin = [baris for baris in dataIkanHias if baris[-1] != username_sedangLogin]
             
             # Mengambil semua nilai dari baris ke-3 (indeks 2) yaitu harga
@@ -471,7 +485,6 @@ def user_checkout():
                     konfirPembayaran = input(YELLOW+BOLD+"Yakin ingin melakukan pembayaran (y/t) ? "+RESET).strip().lower()
                     
                     if konfirPembayaran == "y":
-                        pesanInputExit()
                         bayar = validasiInput("Input uang yang dimiliki : ", validasi_input_angka, "Hanya bisa angka", 'nominal')
                         bayar = int(bayar)
 
@@ -479,9 +492,10 @@ def user_checkout():
 
                         if bayar >= jumlah:
                             print(GREEN+BOLD+"\nBerhasil melakukan pembayaran"+RESET)
-                                
+                            # hapus data pada keranjang ketika berhasil bayar 
                             del dataIkanHias_login
 
+                            # tulis kembali data yang sudah kosong tadi ke dalam keranjang.csv
                             with open("./data/keranjang.csv", "w", newline='') as file:
                                 writer = csv.writer(file)
                                 for baris in dataIkanHias_tidakLogin:
@@ -498,8 +512,10 @@ def user_checkout():
                         break
                     elif konfirPembayaran == "t":
                         break
+                    elif konfirPembayaran == 'exit':
+                        menuUser()
                     else:
-                        print("Input tidak valid.")
+                        print("Input tidak valid, hanya bisa (y/t).")
             else:
                 print('Tidak ada pesanan, silahkan pesan terlebih dahulu😊')
 
@@ -596,27 +612,31 @@ def login():
 ░█░░░█░█░█░█░░█░░█░█
 ░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀         
 '''+RESET)
+    pesanInputExit()
     while True:
         try:
+            # error handling pada input
             inputUsername = input("Username anda : ").strip()
             if not inputUsername:
                 raise ValueError("Username tidak boleh kosong")
+            elif inputUsername == 'exit':
+                menuUtama()
             
             inputPassword = input("Password anda : ").strip()
             if not inputPassword:
                 raise ValueError("Password tidak boleh kosong")
-        
-            login_sukses = False
+            elif inputPassword == 'exit':
+                menuUtama()
 
             with open("./data/akun.csv", "r") as file:
                 reader = csv.reader(file)
                 dataAkun = list(reader)
                 
                 # Memeriksa setiap akun
-                for data in dataAkun:
+                for data in dataAkun[1:]:
                     username, password, role = data
                     if inputUsername == username and inputPassword == password:
-                        login_sukses = True
+                        # simpan username yang saat ini sedang login
                         username_sedangLogin = username
                         if int(role) == 1:
                             wait(0)
@@ -628,14 +648,9 @@ def login():
                             print(RED+BOLD+"\nLogin sebagai user 👤"+RESET)
                             time.sleep(1)
                             menuUser()
-                        break  # Keluar dari loop ketika akun ditemukan dan login berhasil
-                if login_sukses:
-                    break  # Keluar dari loop level atas jika login berhasil
-            
-            if not login_sukses:
-                raise ValueError("Username atau password salah!")
 
-            break  # Keluar dari loop utama jika login sukses
+                # jika akun tidak ditemukan
+                raise ValueError("Username atau password salah!")
 
         except ValueError as error:
             print(f"{RED}{BOLD}Input tidak valid: {error} Silakan coba lagi.\n{RESET}")
@@ -649,15 +664,21 @@ def registrasi():
 ░█▀▄░█▀▀░█░█░░█░░▀▀█░░█░░█▀▄░█▀█░▀▀█░░█░
 ░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░░▀░░▀░▀░▀░▀░▀▀▀░▀▀▀                            
 '''+RESET)
+    pesanInputExit()
     while True:
         try:
+            # error handling pada input
             registUsername = input("Input username : ").strip()
             if not registUsername:
                 raise ValueError("Username tidak boleh kosong")
-
+            elif registUsername == 'exit':
+                menuUtama()
+            
             registPassword = input("Input password : ").strip()
             if not registPassword:
                 raise ValueError("Password tidak boleh kosong")
+            elif registPassword == 'exit':
+                menuUtama()
 
             # Membaca data dari file CSV
             with open("./data/akun.csv", "r") as file:
